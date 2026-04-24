@@ -32,7 +32,8 @@ import {
   Coffee,
   Activity,
   Droplets,
-  Download
+  Download,
+  SlidersHorizontal
 } from 'lucide-react'
 import { useAppStore } from './store/useAppStore'
 
@@ -1531,6 +1532,12 @@ function PromoCenterPanel({
   onClose,
   scale,
 }) {
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) setFilterSheetOpen(false)
+  }, [open])
+
   if (!open) return null
 
   const availableGroups = ['all', ...CATEGORY_META.filter((item) => item.key !== 'all' && item.key !== '其他').map((item) => item.key)]
@@ -1558,6 +1565,23 @@ function PromoCenterPanel({
   })
   
   const preset = SCALE_PRESETS[scale]
+  const activeAdvancedFilters = [
+    titleTagFilter !== 'all' ? { key: 'titleTag', label: `#${titleTagFilter}` } : null,
+    channelFilter !== 'all' ? { key: 'channel', label: channelFilter } : null,
+    groupFilter !== 'all' ? { key: 'group', label: groupFilter } : null,
+  ].filter(Boolean)
+  const hasAnyFilter = statusFilter !== 'active' || activeAdvancedFilters.length > 0
+  const resetAllFilters = () => {
+    setStatusFilter('active')
+    setGroupFilter('all')
+    setTitleTagFilter('all')
+    setChannelFilter('all')
+  }
+  const clearAdvancedFilters = () => {
+    setGroupFilter('all')
+    setTitleTagFilter('all')
+    setChannelFilter('all')
+  }
 
   return (
     <AnimatePresence>
@@ -1567,79 +1591,58 @@ function PromoCenterPanel({
             <div>
               <p className="text-[12px] font-bold" style={{ color: 'var(--promo)' }}>促銷專區</p>
               <h3 className="mt-0.5 text-[20px] font-black text-[var(--text)]">促銷檔期檢視</h3>
-              <p className="mt-1 text-[12px] font-bold text-[var(--muted)]">依狀態、檔期標籤、通路與品類快速縮小活動範圍</p>
+              <p className="mt-1 text-[12px] font-bold text-[var(--muted)]">狀態外顯，檔期、通路與品類收進篩選器</p>
             </div>
             <button onClick={onClose} className="rounded-full bg-slate-100 p-2 text-slate-500"><X className="h-5 w-5" /></button>
           </div>
-          <div className="shrink-0 space-y-3 border-b border-[var(--border)] p-4">
-            <div>
-              <p className="mb-1.5 text-[11px] font-black text-[var(--muted)]">活動狀態</p>
-              <div className="flex flex-wrap gap-2">
-                {['all','active','upcoming','ended'].map((status) => {
-                  const active = statusFilter === status
-                  const label = status === 'all' ? '全部' : (PROMO_STATUS_META[status]?.label || status)
-                  return (
-                    <button key={status} onClick={() => setStatusFilter(status)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--promo)', borderColor: 'var(--promo)' } : { borderColor: 'var(--border)' }}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
+
+          <div className="shrink-0 border-b border-[var(--border)] p-3">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {['all','active','upcoming','ended'].map((status) => {
+                const active = statusFilter === status
+                const label = status === 'all' ? '全部' : (PROMO_STATUS_META[status]?.label || status)
+                return (
+                  <button key={status} onClick={() => setStatusFilter(status)} className={`shrink-0 rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--promo)', borderColor: 'var(--promo)' } : { borderColor: 'var(--border)' }}>
+                    {label}
+                  </button>
+                )
+              })}
             </div>
 
-            <div>
-              <p className="mb-1.5 text-[11px] font-black text-[var(--muted)]">檔期標籤 <span className="font-bold text-slate-400">系統由活動標題自動判讀</span></p>
-              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-                {availableTitleTags.map((tag) => {
-                  const active = titleTagFilter === tag
-                  const label = tag === 'all' ? '全部檔期' : tag
-                  const count = tag === 'all' ? items.length : (titleTagCounts.get(tag) || 0)
-                  return (
-                    <button key={tag} onClick={() => setTitleTagFilter(tag)} className={`shrink-0 rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--primary)', borderColor: 'var(--primary)' } : { borderColor: 'var(--border)' }}>
-                      {label}<span className="ml-1 opacity-70">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[var(--bg-soft)] p-2">
+              <button onClick={() => setFilterSheetOpen(true)} className="relative flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-[12px] font-black text-[var(--text)] shadow-sm active:scale-95">
+                <SlidersHorizontal className="h-3.5 w-3.5" /> 篩選
+                {activeAdvancedFilters.length > 0 && (
+                  <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--promo)] px-1.5 text-[10px] text-white">
+                    {activeAdvancedFilters.length}
+                  </span>
+                )}
+              </button>
 
-            <div>
-              <p className="mb-1.5 text-[11px] font-black text-[var(--muted)]">促銷通路</p>
-              <div className="flex flex-wrap gap-2">
-                {availableChannels.map((channel) => {
-                  const active = channelFilter === channel
-                  const label = channel === 'all' ? '全部通路' : channel
-                  const count = channel === 'all' ? items.length : (channelCounts.get(channel) || 0)
-                  return (
-                    <button key={channel} onClick={() => setChannelFilter(channel)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: '#334155', borderColor: '#334155' } : { borderColor: 'var(--border)' }}>
-                      {label}<span className="ml-1 opacity-70">{count}</span>
-                    </button>
-                  )
-                })}
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
+                {activeAdvancedFilters.length ? activeAdvancedFilters.map((filter) => (
+                  <span key={filter.key} className="shrink-0 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-black text-[var(--muted)] shadow-sm">
+                    {filter.label}
+                  </span>
+                )) : (
+                  <span className="truncate px-1 text-[11px] font-bold text-[var(--muted)]">可依檔期標籤、促銷通路與品類縮小範圍</span>
+                )}
               </div>
-            </div>
 
-            <div>
-              <p className="mb-1.5 text-[11px] font-black text-[var(--muted)]">品類範圍</p>
-              <div className="flex flex-wrap gap-2">
-                {availableGroups.map((group) => {
-                  const active = groupFilter === group
-                  const label = group === 'all' ? '全部品類' : group
-                  return (
-                    <button key={group} onClick={() => setGroupFilter(group)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--promo)', borderColor: 'var(--promo)' } : { borderColor: 'var(--border)' }}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
+              {hasAnyFilter && (
+                <button onClick={resetAllFilters} className="shrink-0 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-500 shadow-sm active:scale-95">
+                  重設
+                </button>
+              )}
             </div>
           </div>
+
           <div className="flex-1 overflow-y-auto p-4 pb-[calc(20px+env(safe-area-inset-bottom))]">
             <div className="mb-3 flex items-center justify-between text-[12px] font-bold text-[var(--muted)]">
               <span>目前顯示 {filtered.length} / {items.length} 筆活動</span>
-              {(statusFilter !== 'active' || groupFilter !== 'all' || titleTagFilter !== 'all' || channelFilter !== 'all') && (
-                <button onClick={() => { setStatusFilter('active'); setGroupFilter('all'); setTitleTagFilter('all'); setChannelFilter('all') }} className="rounded-full bg-slate-100 px-3 py-1 text-slate-500">
-                  重設篩選
+              {activeAdvancedFilters.length > 0 && (
+                <button onClick={clearAdvancedFilters} className="rounded-full bg-slate-100 px-3 py-1 text-slate-500">
+                  清除細項
                 </button>
               )}
             </div>
@@ -1687,13 +1690,85 @@ function PromoCenterPanel({
               }) : <div className="col-span-full py-10 text-center text-sm text-[var(--muted)]">沒有符合條件的促銷活動</div>}
             </div>
           </div>
+
+          <AnimatePresence>
+            {filterSheetOpen && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[76] bg-black/35 backdrop-blur-[2px]" onClick={() => setFilterSheetOpen(false)}>
+                <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={SHEET_TRANSITION} onClick={(event) => event.stopPropagation()} className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[82vh] w-full max-w-3xl flex-col rounded-t-[24px] bg-white shadow-2xl">
+                  <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] p-4">
+                    <div>
+                      <h4 className="text-[18px] font-black text-[var(--text)]">進階篩選</h4>
+                      <p className="mt-1 text-[12px] font-bold text-[var(--muted)]">檔期標籤由活動標題自動判讀；通路獨立判斷</p>
+                    </div>
+                    <button onClick={() => setFilterSheetOpen(false)} className="rounded-full bg-slate-100 p-2 text-slate-500"><X className="h-5 w-5" /></button>
+                  </div>
+
+                  <div className="flex-1 space-y-5 overflow-y-auto p-4 pb-4">
+                    <div>
+                      <p className="mb-2 text-[12px] font-black text-[var(--muted)]">檔期標籤</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableTitleTags.map((tag) => {
+                          const active = titleTagFilter === tag
+                          const label = tag === 'all' ? '全部檔期' : tag
+                          const count = tag === 'all' ? items.length : (titleTagCounts.get(tag) || 0)
+                          return (
+                            <button key={tag} onClick={() => setTitleTagFilter(tag)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--primary)', borderColor: 'var(--primary)' } : { borderColor: 'var(--border)' }}>
+                              {label}<span className="ml-1 opacity-70">{count}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[12px] font-black text-[var(--muted)]">促銷通路</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableChannels.map((channel) => {
+                          const active = channelFilter === channel
+                          const label = channel === 'all' ? '全部通路' : channel
+                          const count = channel === 'all' ? items.length : (channelCounts.get(channel) || 0)
+                          return (
+                            <button key={channel} onClick={() => setChannelFilter(channel)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: '#334155', borderColor: '#334155' } : { borderColor: 'var(--border)' }}>
+                              {label}<span className="ml-1 opacity-70">{count}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[12px] font-black text-[var(--muted)]">品類範圍</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableGroups.map((group) => {
+                          const active = groupFilter === group
+                          const label = group === 'all' ? '全部品類' : group
+                          return (
+                            <button key={group} onClick={() => setGroupFilter(group)} className={`rounded-full border font-bold transition ${active ? 'text-white shadow-sm' : 'bg-white text-[var(--muted)]'} ${preset.promoFilter}`} style={active ? { background: 'var(--promo)', borderColor: 'var(--promo)' } : { borderColor: 'var(--border)' }}>
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-[var(--border)] p-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
+                    <button onClick={clearAdvancedFilters} className="rounded-2xl border border-[var(--border)] bg-white py-3 text-[13px] font-black text-[var(--muted)] active:scale-95">
+                      清除細項
+                    </button>
+                    <button onClick={() => setFilterSheetOpen(false)} className="rounded-2xl py-3 text-[13px] font-black text-white shadow-sm active:scale-95" style={{ background: 'var(--promo)' }}>
+                      套用篩選（{filtered.length}）
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </motion.div>
     </AnimatePresence>
   )
 }
-
-
 function DataHealthPanel({ open, report, onClose, scale }) {
   if (!open) return null
   const preset = SCALE_PRESETS[scale]
