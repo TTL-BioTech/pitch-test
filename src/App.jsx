@@ -1538,6 +1538,29 @@ function PromoCenterPanel({
     if (!open) setFilterSheetOpen(false)
   }, [open])
 
+  const openFilterSheet = useCallback(() => {
+    setFilterSheetOpen(true)
+    if (typeof window !== 'undefined') window.history.pushState({ ui: 'promo-filter' }, '')
+  }, [])
+
+  const closeFilterSheet = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.state?.ui === 'promo-filter') {
+      window.history.back()
+    } else {
+      setFilterSheetOpen(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleFilterPopState = (event) => {
+      if (filterSheetOpen && event.state?.ui !== 'promo-filter') {
+        setFilterSheetOpen(false)
+      }
+    }
+    window.addEventListener('popstate', handleFilterPopState)
+    return () => window.removeEventListener('popstate', handleFilterPopState)
+  }, [filterSheetOpen])
+
   if (!open) return null
 
   const availableGroups = ['all', ...CATEGORY_META.filter((item) => item.key !== 'all' && item.key !== '其他').map((item) => item.key)]
@@ -1610,7 +1633,7 @@ function PromoCenterPanel({
             </div>
 
             <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[var(--bg-soft)] p-2">
-              <button onClick={() => setFilterSheetOpen(true)} className="relative flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-[12px] font-black text-[var(--text)] shadow-sm active:scale-95">
+              <button onClick={openFilterSheet} className="relative flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-[12px] font-black text-[var(--text)] shadow-sm active:scale-95">
                 <SlidersHorizontal className="h-3.5 w-3.5" /> 篩選
                 {activeAdvancedFilters.length > 0 && (
                   <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--promo)] px-1.5 text-[10px] text-white">
@@ -1693,14 +1716,14 @@ function PromoCenterPanel({
 
           <AnimatePresence>
             {filterSheetOpen && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[76] bg-black/35 backdrop-blur-[2px]" onClick={() => setFilterSheetOpen(false)}>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[76] bg-black/35 backdrop-blur-[2px]" onClick={closeFilterSheet}>
                 <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={SHEET_TRANSITION} onClick={(event) => event.stopPropagation()} className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[82vh] w-full max-w-3xl flex-col rounded-t-[24px] bg-white shadow-2xl">
                   <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] p-4">
                     <div>
                       <h4 className="text-[18px] font-black text-[var(--text)]">進階篩選</h4>
                       <p className="mt-1 text-[12px] font-bold text-[var(--muted)]">檔期標籤由活動標題自動判讀；通路獨立判斷</p>
                     </div>
-                    <button onClick={() => setFilterSheetOpen(false)} className="rounded-full bg-slate-100 p-2 text-slate-500"><X className="h-5 w-5" /></button>
+                    <button onClick={closeFilterSheet} className="rounded-full bg-slate-100 p-2 text-slate-500"><X className="h-5 w-5" /></button>
                   </div>
 
                   <div className="flex-1 space-y-5 overflow-y-auto p-4 pb-4">
@@ -1756,7 +1779,7 @@ function PromoCenterPanel({
                     <button onClick={clearAdvancedFilters} className="rounded-2xl border border-[var(--border)] bg-white py-3 text-[13px] font-black text-[var(--muted)] active:scale-95">
                       清除細項
                     </button>
-                    <button onClick={() => setFilterSheetOpen(false)} className="rounded-2xl py-3 text-[13px] font-black text-white shadow-sm active:scale-95" style={{ background: 'var(--promo)' }}>
+                    <button onClick={closeFilterSheet} className="rounded-2xl py-3 text-[13px] font-black text-white shadow-sm active:scale-95" style={{ background: 'var(--promo)' }}>
                       套用篩選（{filtered.length}）
                     </button>
                   </div>
@@ -2241,10 +2264,15 @@ export default function App() {
   }, [loading, activeSection, setActiveSection]);
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (event) => {
+      const nextUi = event.state?.ui
       if (activeModal || mediaSheetProduct) { closeModal(); return }
       if (promoDrawer) { setPromoDrawer(null); return }
-      if (promoCenterOpen) { setPromoCenterOpen(false); return }
+      if (promoCenterOpen) {
+        if (nextUi === 'promo-center') return
+        setPromoCenterOpen(false)
+        return
+      }
       if (settingsOpen) { setSettingsOpen(false); return }
       if (activeTag || keyword) {
         const restoreCode = tagReturnCode
